@@ -33,6 +33,7 @@ import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.Dictionary;
@@ -43,8 +44,11 @@ import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
+import org.powermock.reflect.Whitebox;
 
 import com.puppycrawl.tools.checkstyle.api.CheckstyleException;
+import com.puppycrawl.tools.checkstyle.api.DetailAST;
+import com.puppycrawl.tools.checkstyle.api.TokenTypes;
 
 @RunWith(PowerMockRunner.class)
 public class CommonUtilsTest {
@@ -111,6 +115,31 @@ public class CommonUtilsTest {
             assertEquals("Invalid exception message",
                 "Failed to initialise regular expression [", ex.getMessage());
         }
+    }
+
+    @Test
+    public void testCreationOfFakeCommentBlock() throws Exception {
+        final Method createFakeBlockComment =
+                Whitebox.getMethod(CommonUtils.class,
+                        "createFakeBlockComment", String.class);
+
+        final DetailAST testCommentBlock =
+                (DetailAST) createFakeBlockComment.invoke(null, "test_comment");
+        assertEquals("Invalid token type",
+                TokenTypes.BLOCK_COMMENT_BEGIN, testCommentBlock.getType());
+        assertEquals("Invalid text", "/*", testCommentBlock.getText());
+        assertEquals("Invalid line number", 0, testCommentBlock.getLineNo());
+
+        final DetailAST contentCommentBlock = testCommentBlock.getFirstChild();
+        assertEquals("Invalid tiken type",
+                TokenTypes.COMMENT_CONTENT, contentCommentBlock.getType());
+        assertEquals("Invalid text", "*test_comment", contentCommentBlock.getText());
+        assertEquals("Invalid line number", 0, contentCommentBlock.getLineNo());
+        assertEquals("Invalid column number", -1, contentCommentBlock.getColumnNo());
+
+        final DetailAST endCommentBlock = contentCommentBlock.getNextSibling();
+        assertEquals("Invalid tiken type", TokenTypes.BLOCK_COMMENT_END, endCommentBlock.getType());
+        assertEquals("Invalid text", "*/", endCommentBlock.getText());
     }
 
     @Test
